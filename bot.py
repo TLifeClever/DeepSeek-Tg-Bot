@@ -9,7 +9,8 @@ import requests
 
 # Получаем токены из переменных окружения (для безопасности)
 TOKEN = os.getenv('BOT_TOKEN') or '8008209339:AAHfqQcOnF81bC4GeceqI-DYZEqGljDBw6E'
-API_TOKEN = os.getenv('API_TOKEN') or 'io-v2-...'  # Замените на ваш токен или установите переменную окружения
+API_TOKEN = os.getenv(
+    'API_TOKEN') or 'io-v2-eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJvd25lciI6IjA0M2UyYWRjLWNlMGQtNDdhMy1hY2RlLTEyMWU2MTk3MjcyZCIsImV4cCI6NDkwNzQwNDA3OX0.anZEz7MidIKi4NdLzAmvRyLzL0Ay_qVppUyTcymYrqcWWPZAjKNqgexgZiQYTEjAgh0AsvHEymAbJS4vR0eNhQ'
 
 logging.basicConfig(level=logging.INFO)
 bot = Bot(token=TOKEN)
@@ -25,9 +26,6 @@ async def cmd_start(message: types.Message):
 # ОБРАБОТЧИК ЛЮБОГО СООБЩЕНИЯ
 @dp.message()
 async def filter_messages(message: Message):
-    # Отправляем сообщение "думаю" и сохраняем его как ответ на исходное сообщение
-    thinking_message = await message.reply("🧠 Подождите, я думаю...")
-
     url = "https://api.intelligence.io.solutions/api/v1/chat/completions"  # Убран лишний пробел
 
     headers = {
@@ -51,51 +49,34 @@ async def filter_messages(message: Message):
 
     try:
         # Добавлен таймаут для запроса
-        response = requests.post(url, headers=headers, json=data, timeout=60)  # Увеличен таймаут
+        response = requests.post(url, headers=headers, json=data, timeout=30)
+        print("Status code:", response.status_code)  # Для отладки
+        print("Response:", response.text)  # Для отладки
 
         if response.status_code != 200:
-            await thinking_message.edit_text(f"❌ Ошибка API: {response.status_code}")
-            # Альтернатива, если edit_text не подходит: await message.answer(f"Ошибка API: {response.status_code}")
+            await message.answer("Ошибка API: " + response.text)
             return
 
         data_response = response.json()
 
         # Проверка наличия ключей
         if 'choices' not in data_response or not data_response['choices']:
-            await thinking_message.edit_text("❓ Неправильный формат ответа от API")
+            await message.answer("Неправильный формат ответа от API")
             return
 
         text = data_response['choices'][0]['message']['content']
 
         # Исправлено экранирование для split
-        if '</think>' in text and '\n\n' in text:
-            # Предполагаем, что </think> и \n\n находятся вместе
-            parts = text.split('</think>\n\n', 1)  # Разделяем только один раз
-            if len(parts) > 1:
-                bot_text = parts[1]
-            else:
-                # Если не нашли \n\n сразу после </think>, попробуем просто \n
-                parts_alt = text.split('</think>\n', 1)
-                if len(parts_alt) > 1:
-                    bot_text = parts_alt[1]
-                else:
-                    # Если и это не помогло, отправляем весь текст
-                    bot_text = text
+        if '</think>\n\n' in text:
+            bot_text = text.split('</think>\n\n')[1]
         else:
             bot_text = text
 
-        # Редактируем сообщение "думаю", заменяя его на ответ от нейросети
-        # Используем message.answer, чтобы ответ был как ответ на сообщение пользователя
-        await thinking_message.edit_text(bot_text, parse_mode="Markdown")
+        await message.answer(bot_text, parse_mode="Markdown")
 
-    except asyncio.TimeoutError:
-        await thinking_message.edit_text("⏰ Время ожидания ответа от API истекло. Попробуйте ещё раз.")
-    except requests.exceptions.RequestException as e:
-        logging.error(f"Network error: {e}")
-        await thinking_message.edit_text("🌐 Ошибка соединения с API. Попробуйте ещё раз.")
     except Exception as e:
         logging.error(f"Error processing message: {e}")
-        await thinking_message.edit_text("⚠️ Произошла ошибка при обработке запроса.")
+        await message.answer("Произошла ошибка, попробуйте позже")
 
 
 async def main():
