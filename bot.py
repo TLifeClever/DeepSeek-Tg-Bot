@@ -55,7 +55,7 @@ async def filter_messages(message: Message):
         response = requests.post(url, headers=headers, json=data, timeout=120)
 
         if response.status_code != 200:
-            await thinking_message.edit_text(f"❌ Ошибка API: {response.status_code}\n{text_for_user}")
+            await thinking_message.edit_text(f"❌ Ошибка API: {response.status_code}")
             return
 
         data_response = response.json()
@@ -69,12 +69,12 @@ async def filter_messages(message: Message):
 
         # Исправлено экранирование для split
         if '</think>' in text and '\n\n' in text:
-            # Предполагаем, что  </think> и \n\n находятся вместе
+            # Предполагаем, что </think> и \n\n находятся вместе
             parts = text.split('</think>\n\n', 1)  # Разделяем только один раз
             if len(parts) > 1:
                 bot_text = parts[1]
             else:
-                # Если не нашли \n\n сразу после  </think>, попробуем просто \n
+                # Если не нашли \n\n сразу после </think>, попробуем просто \n
                 parts_alt = text.split('</think>\n', 1)
                 if len(parts_alt) > 1:
                     bot_text = parts_alt[1]
@@ -90,7 +90,6 @@ async def filter_messages(message: Message):
         if len(bot_text) > 4096:
             # Если сообщение слишком длинное, отправим его частями
             # или как документ/файл. Для простоты отправим первые 4000 символов
-            # и уведомим пользователя.
             part_text = bot_text[:4000] + "\n\n(Ответ слишком длинный, обрезан для отображения)"
             await thinking_message.edit_text(part_text, parse_mode="Markdown")
         else:
